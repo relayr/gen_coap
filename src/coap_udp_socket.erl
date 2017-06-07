@@ -37,8 +37,8 @@ init([InPort]) ->
     Opts = [binary, {active, once}, {reuseaddr, true},
             {add_membership, {all_coap_nodes(), any_interface()}}],
     {ok, Socket} = gen_udp:open(InPort, Opts),
-    %{ok, InPort2} = inet:port(Socket),
-    %error_logger:info_msg("coap listen on *:~p~n", [InPort2]),
+    {ok, InPort2} = inet:port(Socket),
+    error_logger:info_msg("coap listen on *:~p~n", [InPort2]),
     {ok, #state{sock=Socket, chans=dict:new()}};
 
 init([InPort, SupPid]) ->

@@ -3,8 +3,15 @@
 
 -behaviour(coap_resource).
 
--export([coap_discover/2, coap_get/4, coap_post/4, coap_put/4, coap_delete/3,
-    coap_observe/4, coap_unobserve/1, handle_info/2, coap_ack/2]).
+-export([coap_discover/2,
+         coap_get/4,
+         coap_post/4,
+         coap_put/4,
+         coap_delete/3,
+         coap_observe/4,
+         coap_unobserve/1,
+         handle_info/2,
+         coap_ack/2]).
 
 -include("coap.hrl").
 
@@ -13,6 +20,10 @@ coap_discover(Prefix, _Args) ->
     io:format("discover ~p~n", [Prefix]),
     [{absolute, Prefix++Name, []} || Name <- mnesia:dirty_all_keys(resources)].
 
+coap_get(_ChId, Prefix, [<<"oic">>, <<"res">>] = Name, Query) ->
+    io:format("get ~p ~p ~p~n", [Prefix, Name, Query]),
+    #coap_content{etag = <<"1234">>,
+                  format = <<"text/plain">>};
 coap_get(_ChId, Prefix, Name, Query) ->
     io:format("get ~p ~p ~p~n", [Prefix, Name, Query]),
     case mnesia:dirty_read(resources, Name) of
