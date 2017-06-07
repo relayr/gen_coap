@@ -35,7 +35,8 @@ close(Pid) ->
 
 
 init([InPort]) ->
-    {ok, Socket} = gen_udp:open(InPort, [binary, {active, true}, {reuseaddr, true}]),
+    Opts = [binary, {active, once}, {reuseaddr, true}],
+    {ok, Socket} = gen_udp:open(InPort, Opts),
     %{ok, InPort2} = inet:port(Socket),
     %error_logger:info_msg("coap listen on *:~p~n", [InPort2]),
     {ok, #state{sock=Socket, chans=dict:new()}};
@@ -72,7 +73,8 @@ handle_cast(Request, State) ->
     io:fwrite("coap_udp_socket unknown cast ~p~n", [Request]),
     {noreply, State}.
 
-handle_info({udp, _Socket, PeerIP, PeerPortNo, Data}, State=#state{chans=Chans, pool=PoolPid}) ->
+handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{chans=Chans, pool=PoolPid}) ->
+    inet:setopts(Socket, [{active, once}]),
     ChId = {PeerIP, PeerPortNo},
     case find_channel(ChId, Chans) of
         % channel found in cache
