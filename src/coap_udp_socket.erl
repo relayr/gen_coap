@@ -33,9 +33,9 @@ close(Pid) ->
     % should be terminated by the user (client)
     gen_server:cast(Pid, shutdown).
 
-
 init([InPort]) ->
-    Opts = [binary, {active, once}, {reuseaddr, true}],
+    Opts = [binary, {active, once}, {reuseaddr, true},
+            {add_membership, {all_coap_nodes(), any_interface()}}],
     {ok, Socket} = gen_udp:open(InPort, Opts),
     %{ok, InPort2} = inet:port(Socket),
     %error_logger:info_msg("coap listen on *:~p~n", [InPort2]),
@@ -129,5 +129,11 @@ find_channel(ChId, Chans) ->
 
 store_channel(ChId, Pid, State=#state{chans=Chans}) ->
     State#state{chans=dict:store(ChId, Pid, Chans)}.
+
+%% @doc See IANA IPv4 Multicast Address Space Registry [1]: All CoAP Nodes
+%% [1]: https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml
+all_coap_nodes() -> {224, 0, 1, 187}.
+
+any_interface() -> {0, 0, 0, 0}.
 
 % end of file
