@@ -132,7 +132,8 @@ handle_info({datagram, BinMessage= <<?VERSION:2, _:2, _TKL:4, _Code:8, MsgId:16,
             {ok, TrState} -> coap_transport:received(BinMessage, TrState)
         end);
 % silently ignore other versions
-handle_info({datagram, <<Ver:2, _/bytes>>}, State) when Ver /= ?VERSION ->
+handle_info({datagram, <<Ver:2, _:6, _/bytes>> = Data}, State) when Ver /= ?VERSION ->
+    io:fwrite("ignoring CoAP version ~p datagram ~p~n", [Ver, Data]),
     {noreply, State};
 handle_info({timeout, TrId, Event}, State=#state{trans=Trans}) ->
     update_state(State, TrId,
