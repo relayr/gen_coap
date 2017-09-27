@@ -140,7 +140,7 @@ process_request(ChId, Request, State) ->
 
 check_resource(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
     case invoke_callback(Module, coap_get,
-            [ChId, Prefix, uri_suffix(Prefix, Request), uri_query(Request)]) of
+            [ChId, Prefix, uri_suffix(Prefix, Request), uri_query(Request), Request]) of
         R1=#coap_content{} ->
             check_preconditions(ChId, Request, R1, State);
         R2={error, not_found} ->
@@ -199,7 +199,7 @@ handle_method(_ChId, Request, _Resource, State) ->
 handle_observe(ChId, Request=#coap_message{options=Options}, Content=#coap_content{},
         State=#state{prefix=Prefix, module=Module, observer=undefined}) ->
     % the first observe request from this user to this resource
-    case invoke_callback(Module, coap_observe, [ChId, Prefix, uri_suffix(Prefix, Request), requires_ack(Request)]) of
+    case invoke_callback(Module, coap_observe, [ChId, Prefix, uri_suffix(Prefix, Request), requires_ack(Request), Request]) of
         {ok, ObState} ->
             Uri = proplists:get_value(uri_path, Options, []),
             pg2:create({coap_observer, Uri}),
@@ -238,7 +238,7 @@ cancel_observer(#coap_message{options=Options}, State=#state{module=Module, obst
 handle_post(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
     Content = coap_message:get_content(Request),
     case invoke_callback(Module, coap_post,
-            [ChId, Prefix, uri_suffix(Prefix, Request), Content]) of
+            [ChId, Prefix, uri_suffix(Prefix, Request), Content, Request]) of
         {ok, Code, Content2} ->
             return_resource([], Request, {ok, Code}, Content2, State);
         {error, Error} ->
@@ -250,7 +250,7 @@ handle_post(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
 handle_put(ChId, Request, Resource, State=#state{prefix=Prefix, module=Module}) ->
     Content = coap_message:get_content(Request),
     case invoke_callback(Module, coap_put,
-            [ChId, Prefix, uri_suffix(Prefix, Request), Content]) of
+            [ChId, Prefix, uri_suffix(Prefix, Request), Content, Request]) of
         ok ->
             return_response(Request, created_or_changed(Resource), State);
         {error, Error} ->
@@ -265,7 +265,7 @@ created_or_changed({error, not_found}) ->
     {ok, created}.
 
 handle_delete(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
-    case invoke_callback(Module, coap_delete, [ChId, Prefix, uri_suffix(Prefix, Request)]) of
+    case invoke_callback(Module, coap_delete, [ChId, Prefix, uri_suffix(Prefix, Request), Request]) of
         ok ->
             return_response(Request, {ok, deleted}, State);
         {error, Error} ->
