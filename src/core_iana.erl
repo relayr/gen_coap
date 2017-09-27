@@ -16,12 +16,12 @@
 
 content_formats() ->
     [{0, <<"text/plain">>},
-    {40, <<"application/link-format">>},
-    {41, <<"application/xml">>},
-    {42, <<"application/octet-stream">>},
-    {47, <<"application/exi">>},
-    {50, <<"application/json">>},
-    {60, <<"application/cbor">>}].
+     {40, <<"application/link-format">>},
+     {41, <<"application/xml">>},
+     {42, <<"application/octet-stream">>},
+     {47, <<"application/exi">>},
+     {50, <<"application/json">>},
+     {60, <<"application/cbor">>}].
 
 
 decode_enum(Dict, Value) ->
