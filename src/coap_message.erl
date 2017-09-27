@@ -15,6 +15,12 @@
 
 -include("coap.hrl").
 
+-type t() :: #coap_message{}.
+-type content() :: #coap_content{}.
+
+-export_type([t/0,
+              content/0]).
+
 request(Type, Method) ->
     request(Type, Method, <<>>, []).
 

@@ -17,12 +17,12 @@
 
 % GET handler
 -callback coap_get(coap_channel_id(), [binary()], [binary()], [binary()]) ->
-    coap_content() | {'error', atom()}.
+    coap_message:content() | {'error', atom()}.
 % POST handler
--callback coap_post(coap_channel_id(), [binary()], [binary()], coap_content()) ->
-    {'ok', atom(), coap_content()} | {'error', atom()}.
+-callback coap_post(coap_channel_id(), [binary()], [binary()], coap_message:content()) ->
+    {'ok', atom(), coap_message:content()} | {'error', atom()}.
 % PUT handler
--callback coap_put(coap_channel_id(), [binary()], [binary()], coap_content()) ->
+-callback coap_put(coap_channel_id(), [binary()], [binary()], coap_message:content()) ->
     'ok' | {'error', atom()}.
 % DELETE handler
 -callback coap_delete(coap_channel_id(), [binary()], [binary()]) ->
@@ -37,7 +37,7 @@
 % handler for messages sent to the responder process
 % used to generate notifications
 -callback handle_info(any(), any()) ->
-    {'notify', any(), coap_content(), any()} | {'noreply', any()} | {'stop', any()}.
+    {'notify', any(), coap_message:content(), any()} | {'noreply', any()} | {'stop', any()}.
 % response to notifications
 -callback coap_ack(any(), any()) ->
     {'ok', any()}.

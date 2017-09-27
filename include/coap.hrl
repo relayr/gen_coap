@@ -6,6 +6,3 @@
 
 -record(coap_message, {type, method, id, token = <<>>, options = [], payload = <<>>}).
 -record(coap_content, {etag, max_age = ?DEFAULT_MAX_AGE, format, payload = <<>>}).
-
--type coap_message() :: #coap_message{}.
--type coap_content() :: #coap_content{}.
