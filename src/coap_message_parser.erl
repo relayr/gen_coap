@@ -235,7 +235,9 @@ decode_option(?OPTION_CONTENT_FORMAT, OptVal) ->
     {content_format, decode_enum(content_formats(), Num, Num)};
 decode_option(?OPTION_MAX_AGE, OptVal) -> {max_age, binary:decode_unsigned(OptVal)};
 decode_option(?OPTION_URI_QUERY, OptVal) -> {uri_query, OptVal};
-decode_option(?OPTION_ACCEPT, OptVal) -> {'accept', binary:decode_unsigned(OptVal)};
+decode_option(?OPTION_ACCEPT, OptVal) ->
+    Num = binary:decode_unsigned(OptVal),
+    {'accept', decode_enum(content_formats(), Num, Num)};
 decode_option(?OPTION_LOCATION_QUERY, OptVal) -> {location_query, OptVal};
 decode_option(?OPTION_PROXY_URI, OptVal) -> {proxy_uri, OptVal};
 decode_option(?OPTION_PROXY_SCHEME, OptVal) -> {proxy_scheme, OptVal};
@@ -271,7 +273,11 @@ encode_option({content_format, OptVal}) ->
     {?OPTION_CONTENT_FORMAT, binary:encode_unsigned(Num)};
 encode_option({max_age, OptVal}) -> {?OPTION_MAX_AGE, binary:encode_unsigned(OptVal)};
 encode_option({uri_query, OptVal}) -> {?OPTION_URI_QUERY, OptVal};
-encode_option({'accept', OptVal}) -> {?OPTION_ACCEPT, binary:encode_unsigned(OptVal)};
+encode_option({'accept', OptVal}) when is_integer(OptVal) ->
+    {?OPTION_ACCEPT, binary:encode_unsigned(OptVal)};
+encode_option({'accept', OptVal}) ->
+    Num = encode_enum(content_formats(), OptVal),
+    {?OPTION_ACCEPT, binary:encode_unsigned(Num)};
 encode_option({location_query, OptVal}) -> {?OPTION_LOCATION_QUERY, OptVal};
 encode_option({proxy_uri, OptVal}) -> {?OPTION_PROXY_URI, OptVal};
 encode_option({proxy_scheme, OptVal}) -> {?OPTION_PROXY_SCHEME, OptVal};
