@@ -145,6 +145,8 @@ check_resource(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
             check_preconditions(ChId, Request, R1, State);
         R2={error, not_found} ->
             check_preconditions(ChId, Request, R2, State);
+        drop_multicast_request ->
+            {noreply, State};
         {error, Code} ->
             return_response(Request, {error, Code}, State);
         {error, Code, Reason} ->
