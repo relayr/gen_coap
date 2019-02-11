@@ -1,7 +1,9 @@
 .eunit
 .rebar
+.rebar3
 .coap_dialyzer*
 
+.fetch
 .project
 .settings
 deps
