@@ -11,7 +11,7 @@
 % handles message retransmission and de-duplication
 -module(coap_transport).
 
--export([init/6, received/2, send/2, timeout/2, awaits_response/1]).
+-export([init/6, received/3, send/2, timeout/2, awaits_response/1]).
 -export([idle/2, got_non/2, sent_non/2, got_rst/2, await_aack/2, pack_sent/2, await_pack/2, aack_sent/2]).
 
 -define(ACK_TIMEOUT, 2000).
@@ -29,7 +29,7 @@
 init(Sock, ChId, Channel, TrId, ReSup, Receiver) ->
     #state{phase=idle, sock=Sock, cid=ChId, channel=Channel, tid=TrId, resp=ReSup, receiver=Receiver}.
 % process incoming message
-received(BinMessage, State=#state{phase=Phase}) ->
+received(ListenPort, BinMessage, State=#state{phase=Phase}) ->
     ?MODULE:Phase({in, BinMessage}, State).
 % process outgoing message
 send(Message, State=#state{phase=Phase}) ->
@@ -48,10 +48,12 @@ awaits_response(_State) ->
 
 % ->NON
 idle(Msg={in, <<1:2, 1:2, _:12, _Tail/bytes>>}, State=#state{channel=Channel, tid=TrId}) ->
+    error_logger:info_msg("_GREG_ coap transport got in non"),
     timeout_after(?NON_LIFETIME, Channel, TrId, transport),
     in_non(Msg, State);
 % ->CON
 idle(Msg={in, <<1:2, 0:2, _:12, _Tail/bytes>>}, State=#state{channel=Channel, tid=TrId}) ->
+    error_logger:info_msg("_GREG_ coap transport got in con"),
     timeout_after(?EXCHANGE_LIFETIME, Channel, TrId, transport),
     in_con(Msg, State);
 % NON->
@@ -66,6 +68,7 @@ idle(Msg={out, #coap_message{type=con}}, State=#state{channel=Channel, tid=TrId}
 % --- incoming NON
 
 in_non({in, BinMessage}, State) ->
+    error_logger:info_msg("_GREG_ in non"),
     case catch coap_message_parser:decode(BinMessage) of
         #coap_message{method=Method} = Message when is_atom(Method) ->
             handle_request(Message, State);
@@ -78,6 +81,7 @@ in_non({in, BinMessage}, State) ->
     next_state(got_non, State).
 
 got_non({in, _Message}, State) ->
+    error_logger:info_msg("_GREG_ coap transport got non"),
     % ignore request retransmission
     next_state(got_non, State).
 
@@ -103,6 +107,7 @@ got_rst({in, _BinMessage}, State)->
 % --- incoming CON->ACK|RST
 
 in_con({in, BinMessage}, State) ->
+    error_logger:info_msg("_GREG_ in con"),
     case catch coap_message_parser:decode(BinMessage) of
         #coap_message{method=undefined, id=MsgId} ->
             % provoked reset

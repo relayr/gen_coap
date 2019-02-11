@@ -47,7 +47,8 @@ init([InPort, SupPid]) ->
     gen_server:cast(self(), {set_pool, SupPid}),
     init([InPort]).
 
-handle_call({get_channel, ChId}, _From, State=#state{chans=Chans, pool=undefined}) ->
+handle_call({get_channel, {PeerIP, PeerPort}}, _From, State=#state{port=ListenPort, chans=Chans, pool=undefined}) ->
+    ChId = {ListenPort, {PeerIP, PeerPort}},
     case find_channel(ChId, Chans) of
         {ok, Pid} ->
             {reply, {ok, Pid}, State};
@@ -76,18 +77,21 @@ handle_cast(Request, State) ->
     {noreply, State}.
 
 handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{port=ListenPort, chans=Chans, pool=PoolPid}) ->
-    error_logger:info_msg("_GREG_ received datagram on UDP port ~p", [ListenPort]),
+    error_logger:info_msg("_GREG_ ~p received datagram on UDP port ~p", [self(), ListenPort]),
     inet:setopts(Socket, [{active, once}]),
-    ChId = {PeerIP, PeerPortNo},
+    ChId = {ListenPort, {PeerIP, PeerPortNo}},
     case find_channel(ChId, Chans) of
         % channel found in cache
         {ok, Pid} ->
+            error_logger:info_msg("_GREG_ ~p found channel ~p for ~p", [self(), Pid, ChId]),
             Pid ! {datagram, {ListenPort, Data}},
             {noreply, State};
         undefined when is_pid(PoolPid) ->
+            error_logger:info_msg("_GREG_ ~p did not found channel for ~p", [self(), ChId]),
             case coap_channel_sup_sup:start_channel(PoolPid, ChId) of
                 % new channel created
                 {ok, _, Pid} ->
+                    error_logger:info_msg("_GREG_ ~p CREATED NEW channel ~p for ~p", [self(), Pid, ChId]),
                     Pid ! {datagram, {ListenPort, Data}},
                     {noreply, store_channel(ChId, Pid, State)};
                 % drop this packet
@@ -102,10 +106,10 @@ handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{port=ListenPor
 handle_info({datagram, {PeerIP, PeerPortNo}, Data}, State=#state{sock=Socket}) ->
     ok = gen_udp:send(Socket, PeerIP, PeerPortNo, Data),
     {noreply, State};
-handle_info({terminated, _SupPid, ChId}, State=#state{chans=Chans, pool = PoolId}) ->
+handle_info({terminated, _SupPid, ChId}, State=#state{port=ListenPort, chans=Chans, pool = PoolId}) ->
     Chans2 = dict:erase(ChId, Chans),
 %%    exit(SupPid, normal),
-    coap_channel_sup_sup:delete_channel(PoolId, ChId),
+    coap_channel_sup_sup:delete_channel(PoolId, {ListenPort, ChId}),
     {noreply, State#state{chans=Chans2}};
 handle_info(Info, State) ->
     io:fwrite("coap_udp_socket unexpected ~p~n", [Info]),
