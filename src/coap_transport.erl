@@ -11,7 +11,7 @@
 % handles message retransmission and de-duplication
 -module(coap_transport).
 
--export([init/6, received/3, send/2, timeout/2, awaits_response/1]).
+-export([init/6, received/2, send/2, timeout/2, awaits_response/1]).
 -export([idle/2, got_non/2, sent_non/2, got_rst/2, await_aack/2, pack_sent/2, await_pack/2, aack_sent/2]).
 
 -define(ACK_TIMEOUT, 2000).
@@ -29,7 +29,7 @@
 init(Sock, ChId, Channel, TrId, ReSup, Receiver) ->
     #state{phase=idle, sock=Sock, cid=ChId, channel=Channel, tid=TrId, resp=ReSup, receiver=Receiver}.
 % process incoming message
-received(ListenPort, BinMessage, State=#state{phase=Phase}) ->
+received(BinMessage, State=#state{phase=Phase}) ->
     ?MODULE:Phase({in, BinMessage}, State).
 % process outgoing message
 send(Message, State=#state{phase=Phase}) ->

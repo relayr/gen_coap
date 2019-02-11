@@ -84,7 +84,7 @@ handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{port=ListenPor
         % channel found in cache
         {ok, Pid} ->
             error_logger:info_msg("_GREG_ ~p found channel ~p for ~p", [self(), Pid, ChId]),
-            Pid ! {datagram, {ListenPort, Data}},
+            Pid ! {datagram, Data},
             {noreply, State};
         undefined when is_pid(PoolPid) ->
             error_logger:info_msg("_GREG_ ~p did not found channel for ~p", [self(), ChId]),
@@ -92,7 +92,7 @@ handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{port=ListenPor
                 % new channel created
                 {ok, _, Pid} ->
                     error_logger:info_msg("_GREG_ ~p CREATED NEW channel ~p for ~p", [self(), Pid, ChId]),
-                    Pid ! {datagram, {ListenPort, Data}},
+                    Pid ! {datagram, Data},
                     {noreply, store_channel(ChId, Pid, State)};
                 % drop this packet
                 {error, _} ->

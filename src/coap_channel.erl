@@ -99,22 +99,22 @@ transport_response(Message=#coap_message{id=MsgId}, Receiver, State=#state{trans
     end.
 
 % incoming CON(0) or NON(1) request
-handle_info({datagram, {ListenPort, BinMessage= <<?VERSION:2, 0:1, _:1, _TKL:4, 0:3, _CodeDetail:5, MsgId:16, _/bytes>>}}, State) ->
+handle_info({datagram, BinMessage= <<?VERSION:2, 0:1, _:1, _TKL:4, 0:3, _CodeDetail:5, MsgId:16, _/bytes>>}, State) ->
     TrId = {in, MsgId},
     update_state(State, TrId,
-        coap_transport:received(ListenPort, BinMessage, create_transport(TrId, undefined, State)));
+        coap_transport:received(BinMessage, create_transport(TrId, undefined, State)));
 % incoming CON(0) or NON(1) response
-handle_info({datagram, {ListenPort, BinMessage= <<?VERSION:2, 0:1, _:1, TKL:4, _Code:8, MsgId:16, Token:TKL/bytes, _/bytes>>}},
+handle_info({datagram, BinMessage= <<?VERSION:2, 0:1, _:1, TKL:4, _Code:8, MsgId:16, Token:TKL/bytes, _/bytes>>},
         State=#state{sock=Sock, cid=ChId, tokens=Tokens, trans=Trans}) ->
     TrId = {in, MsgId},
     case dict:find(TrId, Trans) of
         {ok, TrState} ->
-            update_state(State, TrId, coap_transport:received(ListenPort, BinMessage, TrState));
+            update_state(State, TrId, coap_transport:received(BinMessage, TrState));
         error ->
             case dict:find(Token, Tokens) of
                 {ok, Receiver} ->
                     update_state(State, TrId,
-                        coap_transport:received(ListenPort, BinMessage, init_transport(TrId, Receiver, State)));
+                        coap_transport:received(BinMessage, init_transport(TrId, Receiver, State)));
                 error ->
                     % token was not recognized
                     BinReset = coap_message_parser:encode(#coap_message{type=reset, id=MsgId}),
@@ -123,16 +123,16 @@ handle_info({datagram, {ListenPort, BinMessage= <<?VERSION:2, 0:1, _:1, TKL:4, _
             end
     end;
 % incoming ACK(2) or RST(3) to a request or response
-handle_info({datagram, {ListenPort, BinMessage= <<?VERSION:2, _:2, _TKL:4, _Code:8, MsgId:16, _/bytes>>}},
+handle_info({datagram, BinMessage= <<?VERSION:2, _:2, _TKL:4, _Code:8, MsgId:16, _/bytes>>},
         State=#state{trans=Trans}) ->
     TrId = {out, MsgId},
     update_state(State, TrId,
         case dict:find(TrId, Trans) of
             error -> undefined; % ignore unexpected responses
-            {ok, TrState} -> coap_transport:received(ListenPort, BinMessage, TrState)
+            {ok, TrState} -> coap_transport:received(BinMessage, TrState)
         end);
 % silently ignore other versions
-handle_info({datagram, {ListenPort, <<Ver:2, _:6, _/bytes>> = Data}}, State) when Ver /= ?VERSION ->
+handle_info({datagram, <<Ver:2, _:6, _/bytes>> = Data}, State) when Ver /= ?VERSION ->
     io:fwrite("ignoring CoAP version ~p datagram ~p~n", [Ver, Data]),
     {noreply, State};
 handle_info({timeout, TrId, Event}, State=#state{trans=Trans}) ->
