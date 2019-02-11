@@ -10,7 +10,7 @@
 % convenience functions for building CoAP clients
 -module(coap_client).
 
--export([ping/1, request/2, request/3, request/4, request/5, ack/2]).
+-export([ping/1, request/2, request/3, request/4, request/5, request2/3, request2/4, request2/5, request2/6, ack/2]).
 -export([resolve_uri/1, await_response/5]).
 
 -define(DEFAULT_TIMEOUT, 30000).
@@ -26,6 +26,22 @@ ping(Uri) ->
                 {error, reset} -> ok;
                 _Else -> error
             end
+        end).
+
+request2(Method, Uri, Port) ->
+    request2(Method, Uri, Port, #coap_content{}).
+
+request2(Method, Uri, Port, Content) ->
+    request2(Method, Uri, Port, Content, []).
+
+request2(Method, Uri, Port, Content, Options) ->
+    request2(Method, Uri, Port, Content, Options, ?DEFAULT_TIMEOUT).
+
+request2(Method, Uri, Port, Content, Options, Timeout) ->
+    {Scheme, ChId, Path, Query} = resolve_uri(Uri),
+    channel_apply(Scheme, Port, ChId,
+        fun(Channel) ->
+            request_block(Channel, Method, [{uri_path, Path}, {uri_query, Query} | Options], Content, Timeout)
         end).
 
 request(Method, Uri) ->
@@ -126,15 +142,7 @@ make_segment(Seg) ->
     list_to_binary(http_uri:decode(Seg)).
 
 channel_apply(coap, ChId, Fun) ->
-    {ok, Sock} = coap_udp_socket:start_link(),
-    {ok, Channel} = coap_udp_socket:get_channel(Sock, ChId),
-    % send and receive
-    Res = apply(Fun, [Channel]),
-    % terminate the processes
-    coap_channel:close(Channel),
-    coap_udp_socket:close(Sock),
-    Res;
-
+    channel_apply(coap, 0, ChId, Fun);
 channel_apply(coaps, {Host, Port}, Fun) ->
     {ok, Sock, Channel} = coap_dtls_socket:connect(Host, Port),
     % send and receive
@@ -143,6 +151,17 @@ channel_apply(coaps, {Host, Port}, Fun) ->
     coap_channel:close(Channel),
     coap_dtls_socket:close(Sock),
     Res.
+
+channel_apply(coap, Port, ChId, Fun) ->
+    {ok, Sock} = coap_udp_socket:start_link(Port),
+    {ok, Channel} = coap_udp_socket:get_channel(Sock, ChId),
+    % send and receive
+    Res = apply(Fun, [Channel]),
+    % terminate the processes
+    coap_channel:close(Channel),
+    coap_udp_socket:close(Sock),
+    Res.
+
 
 -include_lib("eunit/include/eunit.hrl").
 

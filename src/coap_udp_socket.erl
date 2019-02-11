@@ -13,14 +13,16 @@
 -module(coap_udp_socket).
 -behaviour(gen_server).
 
--export([start_link/0, start_link/2, get_channel/2, close/1]).
+-export([start_link/0, start_link/1, start_link/2, get_channel/2, close/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, code_change/3, terminate/2]).
 
--record(state, {sock, chans, pool}).
+-record(state, {sock, chans, pool, port}).
 
 % client
 start_link() ->
     gen_server:start_link(?MODULE, [0], []).
+start_link(InPort) ->
+    gen_server:start_link(?MODULE, [InPort], []).
 % server
 start_link(InPort, SupPid) ->
     gen_server:start_link(?MODULE, [InPort, SupPid], []).
@@ -38,8 +40,8 @@ init([InPort]) ->
             {add_membership, {all_coap_nodes(), any_interface()}}],
     {ok, Socket} = gen_udp:open(InPort, Opts),
     {ok, InPort2} = inet:port(Socket),
-    error_logger:info_msg("coap listen on *:~p~n", [InPort2]),
-    {ok, #state{sock=Socket, chans=dict:new()}};
+    error_logger:info_msg("_GREG_ coap listen on *:~p~n", [InPort2]),
+    {ok, #state{sock=Socket, chans=dict:new(), port=InPort2}};
 
 init([InPort, SupPid]) ->
     gen_server:cast(self(), {set_pool, SupPid}),
@@ -73,19 +75,20 @@ handle_cast(Request, State) ->
     io:fwrite("coap_udp_socket unknown cast ~p~n", [Request]),
     {noreply, State}.
 
-handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{chans=Chans, pool=PoolPid}) ->
+handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{port=ListenPort, chans=Chans, pool=PoolPid}) ->
+    error_logger:info_msg("_GREG_ received datagram on UDP port ~p", [ListenPort]),
     inet:setopts(Socket, [{active, once}]),
     ChId = {PeerIP, PeerPortNo},
     case find_channel(ChId, Chans) of
         % channel found in cache
         {ok, Pid} ->
-            Pid ! {datagram, Data},
+            Pid ! {datagram, {ListenPort, Data}},
             {noreply, State};
         undefined when is_pid(PoolPid) ->
             case coap_channel_sup_sup:start_channel(PoolPid, ChId) of
                 % new channel created
                 {ok, _, Pid} ->
-                    Pid ! {datagram, Data},
+                    Pid ! {datagram, {ListenPort, Data}},
                     {noreply, store_channel(ChId, Pid, State)};
                 % drop this packet
                 {error, _} ->
@@ -99,7 +102,7 @@ handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{chans=Chans, p
 handle_info({datagram, {PeerIP, PeerPortNo}, Data}, State=#state{sock=Socket}) ->
     ok = gen_udp:send(Socket, PeerIP, PeerPortNo, Data),
     {noreply, State};
-handle_info({terminated, SupPid, ChId}, State=#state{chans=Chans, pool = PoolId}) ->
+handle_info({terminated, _SupPid, ChId}, State=#state{chans=Chans, pool = PoolId}) ->
     Chans2 = dict:erase(ChId, Chans),
 %%    exit(SupPid, normal),
     coap_channel_sup_sup:delete_channel(PoolId, ChId),

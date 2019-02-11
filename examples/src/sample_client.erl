@@ -3,12 +3,14 @@
 
 -include("coap.hrl").
 
--record(command, {method=get, uri, observe, content=#coap_content{}}).
+-record(command, {method=get, port=0, uri, observe, content=#coap_content{}}).
 
 parse_cmdline(["-m", Method | Params], Command) ->
     parse_cmdline(Params, Command#command{method=list_to_atom(Method)});
 parse_cmdline(["-e", Text | Params], Command=#command{content=Content}) ->
     parse_cmdline(Params, Command#command{content=Content#coap_content{payload=list_to_binary(Text)}});
+parse_cmdline(["-p", Port | Params], Command) ->
+    parse_cmdline(Params, Command#command{port=list_to_integer(Port)});
 parse_cmdline(["-s", Observe | Params], Command) ->
     parse_cmdline(Params, Command#command{observe=list_to_integer(Observe)});
 parse_cmdline([[$- | _] | _Params], _Command) ->
@@ -20,14 +22,14 @@ parse_cmdline([], Command) ->
 
 start(Params) ->
     case catch parse_cmdline(Params, #command{}) of
-        {command, Method, Uri, undefined, Content} -> request(Method, Uri, Content);
-        {command, get, Uri, Duration, _Content} -> observe(Uri, Duration);
+        {command, Method, Port, Uri, undefined, Content} -> request(Method, Uri, Port, Content);
+        {command, get, _, Uri, Duration, _Content} -> observe(Uri, Duration);
         {error, Error} -> io:format("~p~n", [Error])
     end.
 
-request(Method, Uri, Content) ->
+request(Method, Uri, Port, Content) ->
     io:format("~p ~p~n", [Method, Uri]),
-    Res = coap_client:request(Method, Uri, Content),
+    Res = coap_client:request2(Method, Uri, Port, Content),
     io:format("~p~n", [Res]).
 
 observe(Uri, Duration) ->
