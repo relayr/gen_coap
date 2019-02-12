@@ -48,12 +48,10 @@ awaits_response(_State) ->
 
 % ->NON
 idle(Msg={in, <<1:2, 1:2, _:12, _Tail/bytes>>}, State=#state{channel=Channel, tid=TrId}) ->
-    error_logger:info_msg("_GREG_ coap transport got in non"),
     timeout_after(?NON_LIFETIME, Channel, TrId, transport),
     in_non(Msg, State);
 % ->CON
 idle(Msg={in, <<1:2, 0:2, _:12, _Tail/bytes>>}, State=#state{channel=Channel, tid=TrId}) ->
-    error_logger:info_msg("_GREG_ coap transport got in con"),
     timeout_after(?EXCHANGE_LIFETIME, Channel, TrId, transport),
     in_con(Msg, State);
 % NON->
@@ -68,7 +66,6 @@ idle(Msg={out, #coap_message{type=con}}, State=#state{channel=Channel, tid=TrId}
 % --- incoming NON
 
 in_non({in, BinMessage}, State) ->
-    error_logger:info_msg("_GREG_ coap transport non on port ~p", [State#state.port]),
     case catch coap_message_parser:decode(BinMessage) of
         #coap_message{method=Method} = Message when is_atom(Method) ->
             handle_request(Message, State);
@@ -81,7 +78,6 @@ in_non({in, BinMessage}, State) ->
     next_state(got_non, State).
 
 got_non({in, _Message}, State) ->
-    error_logger:info_msg("_GREG_ coap transport got non on port ~p", [State#state.port]),
     % ignore request retransmission
     next_state(got_non, State).
 
@@ -107,7 +103,6 @@ got_rst({in, _BinMessage}, State)->
 % --- incoming CON->ACK|RST
 
 in_con({in, BinMessage}, State) ->
-    error_logger:info_msg("_GREG_ coap transport con on port ~p", [State#state.port]),
     case catch coap_message_parser:decode(BinMessage) of
         #coap_message{method=undefined, id=MsgId} ->
             % provoked reset

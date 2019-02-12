@@ -5,11 +5,11 @@
 
 -export([coap_discover/2,
          coap_get/6,
-         coap_post/5,
-         coap_put/5,
-         coap_delete/4,
-         coap_observe/5,
-         coap_unobserve/1,
+         coap_post/6,
+         coap_put/6,
+         coap_delete/5,
+         coap_observe/6,
+         coap_unobserve/2,
          handle_info/2,
          coap_ack/2]).
 
@@ -31,31 +31,31 @@ coap_get(_ChId, Port, Prefix, Name, Query, _Request) ->
         [] -> {error, not_found}
     end.
 
-coap_post(_ChId, _Prefix, [<<"stop">>], _Content, _Request) ->
+coap_post(_ChId, _Port, _Prefix, [<<"stop">>], _Content, _Request) ->
     main ! stop,
     {ok, content, #coap_content{}};
-coap_post(_ChId, Prefix, Name, Content, _Request) ->
-    io:format("post ~p ~p ~p~n", [Prefix, Name, Content]),
+coap_post(_ChId, Port, Prefix, Name, Content, _Request) ->
+    io:format("post ~p ~p ~p ~p~n", [Port, Prefix, Name, Content]),
     {error, method_not_allowed}.
 
-coap_put(_ChId, Prefix, Name, Content, _Request) ->
-    io:format("put ~p ~p ~p~n", [Prefix, Name, Content]),
+coap_put(_ChId, Port, Prefix, Name, Content, _Request) ->
+    io:format("put ~p ~p ~p ~p~n", [Port, Prefix, Name, Content]),
     mnesia:dirty_write(resources, {resources, Name, Content}),
     coap_responder:notify(Prefix++Name, Content),
     ok.
 
-coap_delete(_ChId, Prefix, Name, _Request) ->
-    io:format("delete ~p ~p~n", [Prefix, Name]),
+coap_delete(_ChId, Port, Prefix, Name, _Request) ->
+    io:format("delete ~p ~p ~p~n", [Port, Prefix, Name]),
     mnesia:dirty_delete(resources, Name),
     coap_responder:notify(Prefix++Name, {error, not_found}),
     ok.
 
-coap_observe(_ChId, Prefix, Name, _Ack, _Request) ->
-    io:format("observe ~p ~p~n", [Prefix, Name]),
+coap_observe(_ChId, Port, Prefix, Name, _Ack, _Request) ->
+    io:format("observe ~p ~p ~p~n", [Port, Prefix, Name]),
     {ok, {state, Prefix, Name}}.
 
-coap_unobserve({state, Prefix, Name}) ->
-    io:format("unobserve ~p ~p~n", [Prefix, Name]),
+coap_unobserve(Port, {state, Prefix, Name}) ->
+    io:format("unobserve ~p ~p ~p~n", [Port, Prefix, Name]),
     ok.
 
 handle_info(_Message, State) -> {noreply, State}.
