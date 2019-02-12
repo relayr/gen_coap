@@ -15,16 +15,16 @@
 
 -include("coap.hrl").
 
--export([start_link/2, notify/2]).
+-export([start_link/3, notify/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
--record(state, {channel, prefix, module, args, insegs, last_response, observer, obseq, obstate, timer}).
+-record(state, {port, channel, prefix, module, args, insegs, last_response, observer, obseq, obstate, timer}).
 
 -define(EXCHANGE_LIFETIME, 247000).
 
-start_link(Channel, Uri) ->
-    gen_server:start_link(?MODULE, [Channel, Uri], []).
+start_link(Channel, Uri, ListenPort) ->
+    gen_server:start_link(?MODULE, [Channel, Uri, ListenPort], []).
 
 notify(Uri, Resource) ->
     case pg2:get_members({coap_observer, Uri}) of
@@ -32,12 +32,12 @@ notify(Uri, Resource) ->
         List -> [gen_server:cast(Pid, Resource) || Pid <- List]
     end.
 
-init([Channel, Uri]) ->
+init([Channel, Uri, ListenPort]) ->
     % the receiver will be determined based on the URI
     case coap_server_registry:get_handler(Uri) of
         {Prefix, Module, Args} ->
             Channel ! {responder_started},
-            {ok, #state{channel=Channel, prefix=Prefix, module=Module, args=Args,
+            {ok, #state{port=ListenPort, channel=Channel, prefix=Prefix, module=Module, args=Args,
                 insegs=orddict:new(), obseq=0}};
         undefined ->
             {stop, not_found}
@@ -138,9 +138,9 @@ process_request(ChId, Request=#coap_message{options=Options},
 process_request(ChId, Request, State) ->
     check_resource(ChId, Request, State).
 
-check_resource(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
+check_resource(ChId, Request, State=#state{port=ListenPort, prefix=Prefix, module=Module}) ->
     case invoke_callback(Module, coap_get,
-            [ChId, Prefix, uri_suffix(Prefix, Request), uri_query(Request), Request]) of
+            [ChId, ListenPort, Prefix, uri_suffix(Prefix, Request), uri_query(Request), Request]) of
         R1=#coap_content{} ->
             check_preconditions(ChId, Request, R1, State);
         R2={error, not_found} ->
@@ -199,9 +199,9 @@ handle_method(_ChId, Request, _Resource, State) ->
     return_response(Request, {error, method_not_allowed}, State).
 
 handle_observe(ChId, Request=#coap_message{options=Options}, Content=#coap_content{},
-        State=#state{prefix=Prefix, module=Module, observer=undefined}) ->
+        State=#state{port=ListenPort, prefix=Prefix, module=Module, observer=undefined}) ->
     % the first observe request from this user to this resource
-    case invoke_callback(Module, coap_observe, [ChId, Prefix, uri_suffix(Prefix, Request), requires_ack(Request), Request]) of
+    case invoke_callback(Module, coap_observe, [ChId, ListenPort, Prefix, uri_suffix(Prefix, Request), requires_ack(Request), Request]) of
         {ok, ObState} ->
             Uri = proplists:get_value(uri_path, Options, []),
             pg2:create({coap_observer, Uri}),
@@ -226,8 +226,8 @@ handle_unobserve(_ChId, Request, Resource, State) ->
     {ok, State2} = cancel_observer(Request, State),
     return_resource(Request, Resource, State2).
 
-cancel_observer(#coap_message{options=Options}, State=#state{module=Module, obstate=ObState}) ->
-    ok = invoke_callback(Module, coap_unobserve, [ObState]),
+cancel_observer(#coap_message{options=Options}, State=#state{port=ListenPort, module=Module, obstate=ObState}) ->
+    ok = invoke_callback(Module, coap_unobserve, [ListenPort, ObState]),
     Uri = proplists:get_value(uri_path, Options, []),
     ok = pg2:leave({coap_observer, Uri}, self()),
     % will the last observer to leave this group please turn out the lights
@@ -237,10 +237,10 @@ cancel_observer(#coap_message{options=Options}, State=#state{module=Module, obst
     end,
     {ok, State#state{observer=undefined, obstate=undefined}}.
 
-handle_post(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
+handle_post(ChId, Request, State=#state{port=ListenPort, prefix=Prefix, module=Module}) ->
     Content = coap_message:get_content(Request),
     case invoke_callback(Module, coap_post,
-            [ChId, Prefix, uri_suffix(Prefix, Request), Content, Request]) of
+            [ChId, ListenPort, Prefix, uri_suffix(Prefix, Request), Content, Request]) of
         {ok, Code, Content2} ->
             return_resource([], Request, {ok, Code}, Content2, State);
         {error, Error} ->
@@ -249,10 +249,10 @@ handle_post(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
             return_response([], Request, {error, Error}, Reason, State)
     end.
 
-handle_put(ChId, Request, Resource, State=#state{prefix=Prefix, module=Module}) ->
+handle_put(ChId, Request, Resource, State=#state{port=ListenPort, prefix=Prefix, module=Module}) ->
     Content = coap_message:get_content(Request),
     case invoke_callback(Module, coap_put,
-            [ChId, Prefix, uri_suffix(Prefix, Request), Content, Request]) of
+            [ChId, ListenPort, Prefix, uri_suffix(Prefix, Request), Content, Request]) of
         ok ->
             return_response(Request, created_or_changed(Resource), State);
         {error, Error} ->
@@ -266,8 +266,8 @@ created_or_changed(#coap_content{}) ->
 created_or_changed({error, not_found}) ->
     {ok, created}.
 
-handle_delete(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
-    case invoke_callback(Module, coap_delete, [ChId, Prefix, uri_suffix(Prefix, Request), Request]) of
+handle_delete(ChId, Request, State=#state{port=ListenPort, prefix=Prefix, module=Module}) ->
+    case invoke_callback(Module, coap_delete, [ChId, ListenPort, Prefix, uri_suffix(Prefix, Request), Request]) of
         ok ->
             return_response(Request, {ok, deleted}, State);
         {error, Error} ->

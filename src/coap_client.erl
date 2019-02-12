@@ -10,7 +10,7 @@
 % convenience functions for building CoAP clients
 -module(coap_client).
 
--export([ping/1, request/2, request/3, request/4, request/5, ack/2]).
+-export([ping/1, request/3, request/4, request/5, request/6, ack/2]).
 -export([resolve_uri/1, await_response/5]).
 
 -define(DEFAULT_TIMEOUT, 30000).
@@ -19,7 +19,7 @@
 
 ping(Uri) ->
     {Scheme, ChId, _Path, _Query} = resolve_uri(Uri),
-    channel_apply(Scheme, ChId,
+    channel_apply(Scheme, 0, ChId,
         fun(Channel) ->
             {ok, Ref} = coap_channel:ping(Channel),
             case await_response(Channel, undefined, [], Ref, <<>>) of
@@ -28,18 +28,18 @@ ping(Uri) ->
             end
         end).
 
-request(Method, Uri) ->
-    request(Method, Uri, #coap_content{}).
+request(Method, Uri, Port) ->
+    request(Method, Uri, Port, #coap_content{}).
 
-request(Method, Uri, Content) ->
-    request(Method, Uri, Content, []).
+request(Method, Uri, Port, Content) ->
+    request(Method, Uri, Port, Content, []).
 
-request(Method, Uri, Content, Options) ->
-    request(Method, Uri, Content, Options, ?DEFAULT_TIMEOUT).
+request(Method, Uri, Port, Content, Options) ->
+    request(Method, Uri, Port, Content, Options, ?DEFAULT_TIMEOUT).
 
-request(Method, Uri, Content, Options, Timeout) ->
+request(Method, Uri, Port, Content, Options, Timeout) ->
     {Scheme, ChId, Path, Query} = resolve_uri(Uri),
-    channel_apply(Scheme, ChId,
+    channel_apply(Scheme, Port, ChId,
         fun(Channel) ->
             request_block(Channel, Method, [{uri_path, Path}, {uri_query, Query} | Options], Content, Timeout)
         end).
@@ -125,8 +125,8 @@ split_segments(Path, Char, Acc) ->
 make_segment(Seg) ->
     list_to_binary(http_uri:decode(Seg)).
 
-channel_apply(coap, ChId, Fun) ->
-    {ok, Sock} = coap_udp_socket:start_link(),
+channel_apply(coap, Port, ChId, Fun) ->
+    {ok, Sock} = coap_udp_socket:start_link(Port),
     {ok, Channel} = coap_udp_socket:get_channel(Sock, ChId),
     % send and receive
     Res = apply(Fun, [Channel]),
@@ -134,8 +134,7 @@ channel_apply(coap, ChId, Fun) ->
     coap_channel:close(Channel),
     coap_udp_socket:close(Sock),
     Res;
-
-channel_apply(coaps, {Host, Port}, Fun) ->
+channel_apply(coaps, _, {Host, Port}, Fun) ->
     {ok, Sock, Channel} = coap_dtls_socket:connect(Host, Port),
     % send and receive
     Res = apply(Fun, [Channel]),

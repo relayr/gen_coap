@@ -16,23 +16,23 @@
     [coap_uri()].
 
 % GET handler
--callback coap_get(coap_channel_id(), [binary()], [binary()], [binary()], coap_message:t()) ->
+-callback coap_get(coap_channel_id(), inet:port_number(), [binary()], [binary()], [binary()], coap_message:t()) ->
     coap_message:content() | {'error', atom()}.
 % POST handler
--callback coap_post(coap_channel_id(), [binary()], [binary()], coap_message:content(), coap_message:t()) ->
+-callback coap_post(coap_channel_id(), inet:port_number(), [binary()], [binary()], coap_message:content(), coap_message:t()) ->
     {'ok', atom(), coap_message:content()} | {'error', atom()}.
 % PUT handler
--callback coap_put(coap_channel_id(), [binary()], [binary()], coap_message:content(), coap_message:t()) ->
+-callback coap_put(coap_channel_id(), inet:port_number(), [binary()], [binary()], coap_message:content(), coap_message:t()) ->
     'ok' | {'error', atom()}.
 % DELETE handler
--callback coap_delete(coap_channel_id(), [binary()], [binary()], coap_message:t()) ->
+-callback coap_delete(coap_channel_id(), inet:port_number(), [binary()], [binary()], coap_message:t()) ->
     'ok' | {'error', atom()}.
 
 % observe request handler
--callback coap_observe(coap_channel_id(), [binary()], [binary()], boolean(), coap_message:t()) ->
+-callback coap_observe(coap_channel_id(), inet:port_number(), [binary()], [binary()], boolean(), coap_message:t()) ->
     {'ok', any()} | {'error', atom()}.
 % cancellation request handler
--callback coap_unobserve(any()) ->
+-callback coap_unobserve(inet:port_number(), any()) ->
     'ok'.
 % handler for messages sent to the responder process
 % used to generate notifications

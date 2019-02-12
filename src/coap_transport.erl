@@ -11,7 +11,7 @@
 % handles message retransmission and de-duplication
 -module(coap_transport).
 
--export([init/6, received/2, send/2, timeout/2, awaits_response/1]).
+-export([init/7, received/2, send/2, timeout/2, awaits_response/1]).
 -export([idle/2, got_non/2, sent_non/2, got_rst/2, await_aack/2, pack_sent/2, await_pack/2, aack_sent/2]).
 
 -define(ACK_TIMEOUT, 2000).
@@ -22,12 +22,12 @@
 -define(EXCHANGE_LIFETIME, 247000).
 -define(NON_LIFETIME, 145000).
 
--record(state, {phase, sock, cid, channel, tid, resp, receiver, msg, timer, retry_time, retry_count}).
+-record(state, {phase, sock, cid, channel, tid, resp, receiver, msg, timer, retry_time, retry_count, port}).
 
 -include("coap.hrl").
 
-init(Sock, ChId, Channel, TrId, ReSup, Receiver) ->
-    #state{phase=idle, sock=Sock, cid=ChId, channel=Channel, tid=TrId, resp=ReSup, receiver=Receiver}.
+init(Sock, ListenPort, ChId, Channel, TrId, ReSup, Receiver) ->
+    #state{phase=idle, sock=Sock, cid=ChId, channel=Channel, tid=TrId, resp=ReSup, receiver=Receiver, port=ListenPort}.
 % process incoming message
 received(BinMessage, State=#state{phase=Phase}) ->
     ?MODULE:Phase({in, BinMessage}, State).
@@ -192,9 +192,9 @@ aack_sent({in, _Ack}, State) ->
 timeout_after(Time, Channel, TrId, Event) ->
     erlang:send_after(Time, Channel, {timeout, TrId, Event}).
 
-handle_request(Message, #state{cid=ChId, channel=Channel, resp=ReSup, receiver=undefined}) ->
+handle_request(Message, #state{port=ListenPort, cid=ChId, channel=Channel, resp=ReSup, receiver=undefined}) ->
     %io:fwrite("~p => ~p~n", [self(), Message]),
-    case coap_responder_sup:get_responder(ReSup, Message) of
+    case coap_responder_sup:get_responder(ReSup, Message, ListenPort) of
         {ok, Pid} ->
             Pid ! {coap_request, ChId, Channel, undefined, Message},
             ok;
