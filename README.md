@@ -1,3 +1,15 @@
+# Note
+
+This a fork of the original gen_coap which was modified to support clustering,
+i.e multiple udp sockets launched are different servers now (each with its own
+state) and requests coming to them can be differentiated by an additional
+parameter (listening port number) provided to the callbacks.
+
+Moreover it is possible now to provide a specific outgoing UDP port number in
+client.
+
+The original `README.md` follows, but it might be out-of-date.
+
 # Generic Erlang CoAP Client/Server
 
 Pure Erlang implementation of the Constrained Application Protocol (CoAP),
