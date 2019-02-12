@@ -19,7 +19,7 @@
 -define(VERSION, 1).
 -define(MAX_MESSAGE_ID, 65535). % 16-bit number
 
--record(state, {sup, sock, cid, tokens, trans, nextmid, res, rescnt}).
+-record(state, {sup, sock, cid, tokens, trans, nextmid, res, rescnt, port}).
 
 -include("coap.hrl").
 
@@ -52,7 +52,7 @@ init([SupPid, SockPid, {ListenPort, ChId}, ReSup]) ->
     % we want to get called upon termination
     process_flag(trap_exit, true),
     {ok, #state{sup=SupPid, sock=SockPid, cid=ChId, tokens=dict:new(),
-        trans=dict:new(), nextmid=first_mid(), res=ReSup, rescnt=0}}.
+        trans=dict:new(), nextmid=first_mid(), res=ReSup, rescnt=0, port=ListenPort}}.
 
 handle_call(_Unknown, _From, State) ->
     {reply, unknown_call, State}.
@@ -177,10 +177,10 @@ create_transport(TrId, Receiver, State=#state{trans=Trans}) ->
         error -> init_transport(TrId, Receiver, State)
     end.
 
-init_transport(TrId, undefined, #state{sock=Sock, cid=ChId, res=ReSup}) ->
-    coap_transport:init(Sock, ChId, self(), TrId, ReSup, undefined);
-init_transport(TrId, Receiver, #state{sock=Sock, cid=ChId}) ->
-    coap_transport:init(Sock, ChId, self(), TrId, undefined, Receiver).
+init_transport(TrId, undefined, #state{sock=Sock, port=ListenPort, cid=ChId, res=ReSup}) ->
+    coap_transport:init(Sock, ListenPort, ChId, self(), TrId, ReSup, undefined);
+init_transport(TrId, Receiver, #state{sock=Sock, port=ListenPort, cid=ChId}) ->
+    coap_transport:init(Sock, ListenPort, ChId, self(), TrId, undefined, Receiver).
 
 update_state(State=#state{trans=Trans}, TrId, undefined) ->
     Trans2 = dict:erase(TrId, Trans),

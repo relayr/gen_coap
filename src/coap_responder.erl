@@ -15,16 +15,16 @@
 
 -include("coap.hrl").
 
--export([start_link/2, notify/2]).
+-export([start_link/3, notify/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
     terminate/2, code_change/3]).
 
--record(state, {channel, prefix, module, args, insegs, last_response, observer, obseq, obstate, timer}).
+-record(state, {port, channel, prefix, module, args, insegs, last_response, observer, obseq, obstate, timer}).
 
 -define(EXCHANGE_LIFETIME, 247000).
 
-start_link(Channel, Uri) ->
-    gen_server:start_link(?MODULE, [Channel, Uri], []).
+start_link(Channel, Uri, ListenPort) ->
+    gen_server:start_link(?MODULE, [Channel, Uri, ListenPort], []).
 
 notify(Uri, Resource) ->
     case pg2:get_members({coap_observer, Uri}) of
@@ -32,12 +32,12 @@ notify(Uri, Resource) ->
         List -> [gen_server:cast(Pid, Resource) || Pid <- List]
     end.
 
-init([Channel, Uri]) ->
+init([Channel, Uri, ListenPort]) ->
     % the receiver will be determined based on the URI
     case coap_server_registry:get_handler(Uri) of
         {Prefix, Module, Args} ->
             Channel ! {responder_started},
-            {ok, #state{channel=Channel, prefix=Prefix, module=Module, args=Args,
+            {ok, #state{port=ListenPort, channel=Channel, prefix=Prefix, module=Module, args=Args,
                 insegs=orddict:new(), obseq=0}};
         undefined ->
             {stop, not_found}
@@ -138,9 +138,9 @@ process_request(ChId, Request=#coap_message{options=Options},
 process_request(ChId, Request, State) ->
     check_resource(ChId, Request, State).
 
-check_resource(ChId, Request, State=#state{prefix=Prefix, module=Module}) ->
+check_resource(ChId, Request, State=#state{port=ListenPort, prefix=Prefix, module=Module}) ->
     case invoke_callback(Module, coap_get,
-            [ChId, Prefix, uri_suffix(Prefix, Request), uri_query(Request), Request]) of
+            [ChId, ListenPort,Prefix, uri_suffix(Prefix, Request), uri_query(Request), Request]) of
         R1=#coap_content{} ->
             check_preconditions(ChId, Request, R1, State);
         R2={error, not_found} ->

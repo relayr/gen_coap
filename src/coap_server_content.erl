@@ -11,7 +11,7 @@
 -module(coap_server_content).
 -behaviour(coap_resource).
 
--export([coap_discover/2, coap_get/5, coap_post/5, coap_put/5, coap_delete/4,
+-export([coap_discover/2, coap_get/6, coap_post/5, coap_put/5, coap_delete/4,
     coap_observe/5, coap_unobserve/1, handle_info/2, coap_ack/2]).
 
 -include("coap.hrl").
@@ -19,12 +19,12 @@
 coap_discover(_Prefix, _Args) ->
     [].
 
-coap_get(_ChId, _Prefix, [], Query, _Request) ->
+coap_get(_ChId, _Port, _Prefix, [], Query, _Request) ->
     Links = core_link:encode(filter(coap_server_registry:get_links(), Query)),
     #coap_content{etag = binary:part(crypto:hash(sha, Links), {0,4}),
                   format = <<"application/link-format">>,
                   payload = list_to_binary(Links)};
-coap_get(_ChId, _Prefix, _Else, _Query, _Request) ->
+coap_get(_ChId, _Port,  _Prefix, _Else, _Query, _Request) ->
     {error, not_found}.
 
 coap_post(_ChId, _Prefix, _Suffix, _Content, _Request) -> {error, method_not_allowed}.

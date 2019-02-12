@@ -40,7 +40,6 @@ init([InPort]) ->
             {add_membership, {all_coap_nodes(), any_interface()}}],
     {ok, Socket} = gen_udp:open(InPort, Opts),
     {ok, InPort2} = inet:port(Socket),
-    error_logger:info_msg("_GREG_ coap listen on *:~p~n", [InPort2]),
     {ok, #state{sock=Socket, chans=dict:new(), port=InPort2}};
 
 init([InPort, SupPid]) ->
@@ -77,21 +76,17 @@ handle_cast(Request, State) ->
     {noreply, State}.
 
 handle_info({udp, Socket, PeerIP, PeerPortNo, Data}, State=#state{port=ListenPort, chans=Chans, pool=PoolPid}) ->
-    error_logger:info_msg("_GREG_ ~p received datagram on UDP port ~p", [self(), ListenPort]),
     inet:setopts(Socket, [{active, once}]),
     ChId = {ListenPort, {PeerIP, PeerPortNo}},
     case find_channel(ChId, Chans) of
         % channel found in cache
         {ok, Pid} ->
-            error_logger:info_msg("_GREG_ ~p found channel ~p for ~p", [self(), Pid, ChId]),
             Pid ! {datagram, Data},
             {noreply, State};
         undefined when is_pid(PoolPid) ->
-            error_logger:info_msg("_GREG_ ~p did not found channel for ~p", [self(), ChId]),
             case coap_channel_sup_sup:start_channel(PoolPid, ChId) of
                 % new channel created
                 {ok, _, Pid} ->
-                    error_logger:info_msg("_GREG_ ~p CREATED NEW channel ~p for ~p", [self(), Pid, ChId]),
                     Pid ! {datagram, Data},
                     {noreply, store_channel(ChId, Pid, State)};
                 % drop this packet

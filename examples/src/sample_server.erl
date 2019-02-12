@@ -4,7 +4,7 @@
 -behaviour(coap_resource).
 
 -export([coap_discover/2,
-         coap_get/5,
+         coap_get/6,
          coap_post/5,
          coap_put/5,
          coap_delete/4,
@@ -20,12 +20,12 @@ coap_discover(Prefix, _Args) ->
     io:format("discover ~p~n", [Prefix]),
     [{absolute, Prefix++Name, []} || Name <- mnesia:dirty_all_keys(resources)].
 
-coap_get(_ChId, Prefix, [<<"oic">>, <<"res">>] = Name, Query, _Request) ->
-    io:format("get ~p ~p ~p~n", [Prefix, Name, Query]),
+coap_get(_ChId, Port, Prefix, [<<"oic">>, <<"res">>] = Name, Query, _Request) ->
+    io:format("get ~p ~p ~p ~p~n", [Port, Prefix, Name, Query]),
     #coap_content{etag = <<"1234">>,
                   format = <<"text/plain">>};
-coap_get(_ChId, Prefix, Name, Query, _Request) ->
-    io:format("get ~p ~p ~p~n", [Prefix, Name, Query]),
+coap_get(_ChId, Port, Prefix, Name, Query, _Request) ->
+    io:format("get ~p ~p ~p ~p~n", [Port, Prefix, Name, Query]),
     case mnesia:dirty_read(resources, Name) of
         [{resources, Name, Resource}] -> Resource;
         [] -> {error, not_found}

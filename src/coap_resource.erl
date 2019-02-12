@@ -16,7 +16,7 @@
     [coap_uri()].
 
 % GET handler
--callback coap_get(coap_channel_id(), [binary()], [binary()], [binary()], coap_message:t()) ->
+-callback coap_get(coap_channel_id(), inet:port_number(), [binary()], [binary()], [binary()], coap_message:t()) ->
     coap_message:content() | {'error', atom()}.
 % POST handler
 -callback coap_post(coap_channel_id(), [binary()], [binary()], coap_message:content(), coap_message:t()) ->
