@@ -20,7 +20,7 @@
 
 % client
 start_link() ->
-    gen_server:start_link(?MODULE, [0], []).
+    start_link(0).
 start_link(InPort) ->
     gen_server:start_link(?MODULE, [InPort], []).
 % server
