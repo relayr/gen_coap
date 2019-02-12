@@ -29,7 +29,7 @@ start(Params) ->
 
 request(Method, Uri, Port, Content) ->
     io:format("~p ~p~n", [Method, Uri]),
-    Res = coap_client:request2(Method, Uri, Port, Content),
+    Res = coap_client:request(Method, Uri, Port, Content),
     io:format("~p~n", [Res]).
 
 observe(Uri, Duration) ->

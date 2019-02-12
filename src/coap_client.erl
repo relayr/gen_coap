@@ -10,7 +10,7 @@
 % convenience functions for building CoAP clients
 -module(coap_client).
 
--export([ping/1, request/2, request/3, request/4, request/5, request2/3, request2/4, request2/5, request2/6, ack/2]).
+-export([ping/1, request/3, request/4, request/5, request/6, ack/2]).
 -export([resolve_uri/1, await_response/5]).
 
 -define(DEFAULT_TIMEOUT, 30000).
@@ -28,34 +28,18 @@ ping(Uri) ->
             end
         end).
 
-request2(Method, Uri, Port) ->
-    request2(Method, Uri, Port, #coap_content{}).
+request(Method, Uri, Port) ->
+    request(Method, Uri, Port, #coap_content{}).
 
-request2(Method, Uri, Port, Content) ->
-    request2(Method, Uri, Port, Content, []).
+request(Method, Uri, Port, Content) ->
+    request(Method, Uri, Port, Content, []).
 
-request2(Method, Uri, Port, Content, Options) ->
-    request2(Method, Uri, Port, Content, Options, ?DEFAULT_TIMEOUT).
+request(Method, Uri, Port, Content, Options) ->
+    request(Method, Uri, Port, Content, Options, ?DEFAULT_TIMEOUT).
 
-request2(Method, Uri, Port, Content, Options, Timeout) ->
+request(Method, Uri, Port, Content, Options, Timeout) ->
     {Scheme, ChId, Path, Query} = resolve_uri(Uri),
     channel_apply(Scheme, Port, ChId,
-        fun(Channel) ->
-            request_block(Channel, Method, [{uri_path, Path}, {uri_query, Query} | Options], Content, Timeout)
-        end).
-
-request(Method, Uri) ->
-    request(Method, Uri, #coap_content{}).
-
-request(Method, Uri, Content) ->
-    request(Method, Uri, Content, []).
-
-request(Method, Uri, Content, Options) ->
-    request(Method, Uri, Content, Options, ?DEFAULT_TIMEOUT).
-
-request(Method, Uri, Content, Options, Timeout) ->
-    {Scheme, ChId, Path, Query} = resolve_uri(Uri),
-    channel_apply(Scheme, ChId,
         fun(Channel) ->
             request_block(Channel, Method, [{uri_path, Path}, {uri_query, Query} | Options], Content, Timeout)
         end).
