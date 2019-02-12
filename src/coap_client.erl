@@ -19,7 +19,7 @@
 
 ping(Uri) ->
     {Scheme, ChId, _Path, _Query} = resolve_uri(Uri),
-    channel_apply(Scheme, ChId,
+    channel_apply(Scheme, 0, ChId,
         fun(Channel) ->
             {ok, Ref} = coap_channel:ping(Channel),
             case await_response(Channel, undefined, [], Ref, <<>>) of
@@ -125,17 +125,6 @@ split_segments(Path, Char, Acc) ->
 make_segment(Seg) ->
     list_to_binary(http_uri:decode(Seg)).
 
-channel_apply(coap, ChId, Fun) ->
-    channel_apply(coap, 0, ChId, Fun);
-channel_apply(coaps, {Host, Port}, Fun) ->
-    {ok, Sock, Channel} = coap_dtls_socket:connect(Host, Port),
-    % send and receive
-    Res = apply(Fun, [Channel]),
-    % terminate the processes
-    coap_channel:close(Channel),
-    coap_dtls_socket:close(Sock),
-    Res.
-
 channel_apply(coap, Port, ChId, Fun) ->
     {ok, Sock} = coap_udp_socket:start_link(Port),
     {ok, Channel} = coap_udp_socket:get_channel(Sock, ChId),
@@ -144,8 +133,15 @@ channel_apply(coap, Port, ChId, Fun) ->
     % terminate the processes
     coap_channel:close(Channel),
     coap_udp_socket:close(Sock),
+    Res;
+channel_apply(coaps, _, {Host, Port}, Fun) ->
+    {ok, Sock, Channel} = coap_dtls_socket:connect(Host, Port),
+    % send and receive
+    Res = apply(Fun, [Channel]),
+    % terminate the processes
+    coap_channel:close(Channel),
+    coap_dtls_socket:close(Sock),
     Res.
-
 
 -include_lib("eunit/include/eunit.hrl").
 
