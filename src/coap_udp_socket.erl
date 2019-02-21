@@ -36,6 +36,7 @@ close(Pid) ->
     gen_server:cast(Pid, shutdown).
 
 init([InPort]) ->
+    process_flag(trap_exit, true),
     Opts = [binary, {active, once}, {reuseaddr, true},
             {add_membership, {all_coap_nodes(), any_interface()}}],
     {ok, Socket} = gen_udp:open(InPort, Opts),
@@ -113,8 +114,14 @@ handle_info(Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-terminate(_Reason, #state{sock=Sock}) ->
+terminate(_Reason, #state{sock=Sock, pool = undefined}) ->
     gen_udp:close(Sock),
+    ok;
+terminate(_Reason, #state{sock=Sock, chans=Chans, pool = PoolId}) ->
+    gen_udp:close(Sock),
+    dict:map(fun(ChId, _Pid) ->
+        coap_channel_sup_sup:delete_channel(PoolId, ChId)
+    end, Chans),
     ok.
 
 

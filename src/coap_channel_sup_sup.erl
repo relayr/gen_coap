@@ -25,8 +25,11 @@ start_channel(SupPid, ChId) ->
 
 delete_channel(SupPid, ChId) ->
     case supervisor:terminate_child(SupPid, ChId) of
-        ok -> supervisor:delete_child(SupPid, ChId);
-        Error -> Error
+        ok ->
+            supervisor:delete_child(SupPid, ChId),
+            ok;
+        Error ->
+            Error
     end.
 
 init([]) ->
