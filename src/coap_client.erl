@@ -10,8 +10,8 @@
 % convenience functions for building CoAP clients
 -module(coap_client).
 
--export([ping/1, request/3, request/4, request/5, request/6, ack/2]).
--export([resolve_uri/1, await_response/5]).
+-export([request/3, request/4, request/5, request/6]).
+-export([ping/1, resolve_uri/1, await_response/5, ack/2]).
 
 -define(DEFAULT_TIMEOUT, 30000).
 
@@ -37,12 +37,14 @@ request(Method, Uri, Port, Content) ->
 request(Method, Uri, Port, Content, Options) ->
     request(Method, Uri, Port, Content, Options, ?DEFAULT_TIMEOUT).
 
-request(Method, Uri, Port, Content, Options, Timeout) ->
-    {Scheme, ChId, Path, Query} = resolve_uri(Uri),
+request(Method, {Scheme, ChId, Path, Query}, Port, Content, Options, Timeout) ->
     channel_apply(Scheme, Port, ChId,
         fun(Channel) ->
             request_block(Channel, Method, [{uri_path, Path}, {uri_query, Query} | Options], Content, Timeout)
-        end).
+        end);
+
+request(Method, Uri, Port, Content, Options, Timeout) when is_binary(Uri) or is_string(Uri) ->
+    request(Method, resolve_uri(Uri), Port, Content, Options, Timeout).
 
 request_block(Channel, Method, ROpt, Content, Timeout) ->
     request_block(Channel, Method, ROpt, undefined, Content, Timeout).
