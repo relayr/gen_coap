@@ -43,7 +43,7 @@ request(Method, {Scheme, ChId, Path, Query}, Port, Content, Options, Timeout) ->
             request_block(Channel, Method, [{uri_path, Path}, {uri_query, Query} | Options], Content, Timeout)
         end);
 
-request(Method, Uri, Port, Content, Options, Timeout) when is_binary(Uri) or is_string(Uri) ->
+request(Method, Uri, Port, Content, Options, Timeout) when is_binary(Uri) ->
     request(Method, resolve_uri(Uri), Port, Content, Options, Timeout).
 
 request_block(Channel, Method, ROpt, Content, Timeout) ->
